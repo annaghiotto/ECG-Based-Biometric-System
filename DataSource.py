@@ -2,11 +2,7 @@ import os
 import wfdb
 import numpy as np
 from abc import ABC
-
-from FeatureExtractor import FeatureExtractor
 from Person import PersonFactory, Person
-from Preprocessor import Preprocessor
-from Templates import TemplatesFactory
 
 
 class DataSource(ABC):
@@ -34,9 +30,9 @@ class GetSBData(DataSource):
             signal = np.loadtxt(filename)
             person = int(filename.split('_')[4].split('u')[1].split('.')[0])
             try:
-                self.person_signals[person].append(signal)
+                self.person_signals[person].append(signal[:, 1])
             except:
-                self.person_signals[person] = [signal]
+                self.person_signals[person] = [signal[:, 1]]
 
     def __next__(self) -> Person:
         try:
@@ -57,7 +53,7 @@ class GetEcgIDData(DataSource):
                 try:
                     filename = self.filename + '/Person_' + f"{self.person:02}" + '/rec_' + str(record)
                     signal, fields = wfdb.rdsamp(filename)
-                    person_signals.append(signal)
+                    person_signals.append(signal[:, 0])
                     record += 1
                 except FileNotFoundError:
                     person = self.person
@@ -65,16 +61,3 @@ class GetEcgIDData(DataSource):
                     return self.person_factory.create(person_signals, person)
         else:
             raise StopIteration
-
-
-template_factory = TemplatesFactory(Preprocessor(), FeatureExtractor())
-person_factory = PersonFactory(template_factory)
-data = GetEcgIDData('ecg-id-database-1.0.0', person_factory)
-
-for i in data:
-    print(i)
-
-data_sb = GetSBData('SB_ECGDatabase_01', person_factory)
-
-for i in data_sb:
-    print(i)
