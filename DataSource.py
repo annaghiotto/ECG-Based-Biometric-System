@@ -38,7 +38,7 @@ class GetSBData(DataSource):
         try:
             person = self.person
             self.person += 1
-            return self.person_factory.create(self.person_signals[person], person)
+            return self.person_factory.create(self.person_signals[person], person-1)
         except KeyError:
             raise StopIteration
 
@@ -58,6 +58,6 @@ class GetEcgIDData(DataSource):
                 except FileNotFoundError:
                     person = self.person
                     self.person += 1
-                    return self.person_factory.create(person_signals, person)
+                    return self.person_factory.create(person_signals, person-1)
         else:
             raise StopIteration

@@ -13,5 +13,4 @@ class Preprocessor(ABC):
 
 class SimplePreprocessor(Preprocessor):
     def preprocess(self, signal: Signal) -> Signal:
-        print(signal.shape)
         return signal
