@@ -15,5 +15,6 @@ class Person:
 class PersonFactory:
     templates_factory: "TemplatesFactory"
 
-    def create(self, signals: List[Signal], uid: int) -> Person:
-        return Person(self.templates_factory.from_signals(signals), uid)
+    def create(self, signals: List[Signal], uid: int, fs: float) -> Person:
+        return Person(self.templates_factory.from_signals(signals, fs), uid)
+

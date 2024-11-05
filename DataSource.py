@@ -22,6 +22,7 @@ class GetSBData(DataSource):
 
     def __init__(self, filename, person_factory: PersonFactory):
         super().__init__(filename, person_factory)
+        self.fs = 1000
         self.person_signals = {}
         filelist = iter(os.listdir(os.fsencode(self.filename)))
         for filename in filelist:
@@ -38,7 +39,7 @@ class GetSBData(DataSource):
         try:
             person = self.person
             self.person += 1
-            return self.person_factory.create(self.person_signals[person], person-1)
+            return self.person_factory.create(self.person_signals[person], person-1, self.fs)
         except KeyError:
             raise StopIteration
 
@@ -46,6 +47,7 @@ class GetSBData(DataSource):
 class GetEcgIDData(DataSource):
 
     def __next__(self) -> Person:
+        self.fs = 500
         record = 1
         person_signals = []
         if os.path.exists(self.filename + '/Person_' + f"{self.person:02}"):
@@ -58,6 +60,6 @@ class GetEcgIDData(DataSource):
                 except FileNotFoundError:
                     person = self.person
                     self.person += 1
-                    return self.person_factory.create(person_signals, person-1)
+                    return self.person_factory.create(person_signals, person-1, self.fs)
         else:
             raise StopIteration
