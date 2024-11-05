@@ -1,5 +1,4 @@
 from abc import ABC
-from itertools import chain
 from typing import List
 
 import numpy as np
@@ -7,14 +6,18 @@ from scipy.stats import kurtosis, skew
 from wfdb import processing
 
 from FSBase import FSBase
-from Signal import Signal
-
-type Features = np.ndarray
+from custom_types import Signal, Features, Template
 
 
 class FeatureExtractor(ABC, FSBase):
-    def __call__(self, signals: List[Signal]) -> List[Features]:
-        return list(chain.from_iterable(self.extract(signal) for signal in signals))
+    def __call__(self, signals: List[Signal]) -> List[Template]:
+        data = [self.extract(signal) for signal in signals]
+        for features_list in data:
+            for features in features_list:
+                for template in features:
+                    print(template)
+                    assert len(template) == len(data[0][0])
+        return data
 
     def extract(self, signal: Signal) -> List[Features]:
         pass

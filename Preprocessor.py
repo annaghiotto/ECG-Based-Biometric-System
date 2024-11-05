@@ -2,7 +2,7 @@ from abc import ABC
 from typing import List
 
 from FSBase import FSBase
-from Signal import Signal
+from custom_types import Signal
 from scipy.signal import butter, lfilter, iirnotch
 
 
