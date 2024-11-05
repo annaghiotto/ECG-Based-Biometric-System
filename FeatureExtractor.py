@@ -12,8 +12,7 @@ from custom_types import Signal, Features, Template
 
 class FeatureExtractor(ABC, FSBase):
     def __call__(self, signals: List[Signal]) -> List[Template]:
-        data = [self.extract(signal) for signal in signals]
-        return data
+        return [self.extract(signal) for signal in signals]
 
     def extract(self, signal: Signal) -> List[Features]:
         pass
