@@ -10,7 +10,7 @@ import xgboost as xgb
 class Classifier(ABC):
     threshold: float
 
-    def fit(self, person_list: List[Person]):
+    def fit(self, train: List[Person], eval_set: List[Person]):
         pass
 
     def identify(self, person: Person) -> int | None:
@@ -25,7 +25,7 @@ class XGBoostClassifier(Classifier):
     def __post_init__(self):
         self.model = xgb.XGBClassifier(objective="multi:softmax", verbosity=2)
 
-    def fit(self, train: List[Person], eval: List[Person]):
+    def fit(self, train: List[Person], eval_set: List[Person]):
         X = [
             template
             for person in train
@@ -35,11 +35,11 @@ class XGBoostClassifier(Classifier):
 
         eval_X = [
             template
-            for person in eval
+            for person in eval_set
             for template in person.templates_flat
         ]
 
-        eval_y = [person.uid for person in eval for _ in person.templates_flat]
+        eval_y = [person.uid for person in eval_set for _ in person.templates_flat]
 
         n_classes = np.unique(y).shape[0]
         self.model.n_classes_ = n_classes
