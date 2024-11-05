@@ -2,6 +2,7 @@ from abc import ABC
 from typing import List
 
 import numpy as np
+from scipy.fft import dct
 from scipy.stats import kurtosis, skew
 from wfdb import processing
 
@@ -12,11 +13,6 @@ from custom_types import Signal, Features, Template
 class FeatureExtractor(ABC, FSBase):
     def __call__(self, signals: List[Signal]) -> List[Template]:
         data = [self.extract(signal) for signal in signals]
-        for features_list in data:
-            for features in features_list:
-                for template in features:
-                    print(template)
-                    assert len(template) == len(data[0][0])
         return data
 
     def extract(self, signal: Signal) -> List[Features]:
@@ -80,5 +76,46 @@ class StatisticalTimeExtractor(FeatureExtractor):
         except ValueError as e:
             print("ValueError during np.array conversion:", e)
             raise
+
+        return features.tolist()
+
+class DiscreteCosineExtractor(FeatureExtractor):
+
+    def detect_R(self, signal: Signal) -> List[int]:
+        r_peaks = processing.gqrs_detect(sig=signal, fs=self.fs)
+        return r_peaks
+    
+    def autocorrelation(self, signal: Signal, num_coefficients: int) -> List[int]:
+        autocorr_result = np.correlate(signal, signal, mode='full')
+        autocorr_result = autocorr_result[len(autocorr_result)//2:]
+        return autocorr_result[:num_coefficients]
+    
+    def extract(self, signal: Signal) -> List[Features]:
+        r_peaks = self.detect_R(signal)
+        pre_r = int(0.2 * self.fs)
+        post_r = int(0.4 * self.fs)
+
+        features = []
+        for r_peak in r_peaks:
+            start = max(0, r_peak - pre_r)
+            end = min(len(signal), r_peak + post_r)
+            cycle = signal[start:end]
+
+            target_length = pre_r + post_r
+            if len(cycle) < target_length:
+                cycle = np.pad(cycle, (0, target_length - len(cycle)), mode='constant')
+            else:
+                cycle = cycle[:target_length]
+            
+            autocorr_coefficients = self.autocorrelation(cycle, num_coefficients=21)
+            feature_vector = dct(autocorr_coefficients, norm='ortho')
+            features = np.append(features, feature_vector)
+
+            try:
+                features = np.array(features)
+                # print(f"Features shape after conversion to np.array: {features.shape}")
+            except ValueError as e:
+                print("ValueError during np.array conversion:", e)
+                raise
 
         return features.tolist()

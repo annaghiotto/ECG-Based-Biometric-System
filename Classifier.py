@@ -44,6 +44,8 @@ class XGBoostClassifier(Classifier):
         n_classes = np.unique(y).shape[0]
         self.model.n_classes_ = n_classes
 
+        print(np.array(X).shape)
+
         # Fit model with evaluation and logging
         print("Starting model training with iteration logging:")
         self.model.fit(
