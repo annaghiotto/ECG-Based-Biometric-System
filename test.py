@@ -1,11 +1,11 @@
 from DataSource import GetEcgIDData, GetSBData
 from FeatureExtractor import SimpleFeatureExtractor
-from Preprocessor import SimplePreprocessor, BasicPreprocessor
+from Preprocessor import BasicPreprocessor
 from Classifier import XGBoostClassifier
 
 data = [person for person in GetEcgIDData('ecg-id-database-1.0.0', BasicPreprocessor(), SimpleFeatureExtractor())]
 
-data_sb = [person for person in GetSBData('SB_ECGDatabase_01', SimplePreprocessor(), SimpleFeatureExtractor())]
+data_sb = [person for person in GetSBData('SB_ECGDatabase_01', BasicPreprocessor(), SimpleFeatureExtractor())]
 
 for person in data_sb:
     print(person)
