@@ -35,7 +35,6 @@ class XGBoostClassifier(Classifier):
         ]
 
         y = [person.uid for person in person_list for _ in person.templates]
-
         n_classes = np.unique(y).shape[0]
         self.model.n_classes_ = n_classes
         self.model.fit(X, y)

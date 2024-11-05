@@ -1,24 +1,12 @@
 from abc import ABC
-from dataclasses import dataclass
 from typing import List
 
-import numpy as np
+from FSBase import FSBase
 from Signal import Signal
 from scipy.signal import butter, lfilter, iirnotch
 
 
-class Preprocessor(ABC):
-    def __init__(self):
-        self._fs = 500.0
-
-    @property
-    def fs(self):
-        return self._fs
-
-    @fs.setter
-    def fs(self, value):
-        self._fs = value
-
+class Preprocessor(ABC, FSBase):
     def __call__(self, signals: List[Signal]) -> List[Signal]:
         return [self.preprocess(signal) for signal in signals]
 
