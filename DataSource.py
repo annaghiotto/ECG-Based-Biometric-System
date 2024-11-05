@@ -1,28 +1,41 @@
 import os
 import wfdb
 import numpy as np
-from abc import ABC
+from abc import ABC, abstractmethod
+
+from FeatureExtractor import FeatureExtractor
 from Person import PersonFactory, Person
+from Preprocessor import Preprocessor
+from Templates import TemplatesFactory
 
 
 class DataSource(ABC):
-    def __init__(self, filename, person_factory: PersonFactory):
+    def __init__(self, filename, preprocessor: Preprocessor, feature_extractor: FeatureExtractor):
         self.person = 1
         self.filename = filename
-        self.person_factory = person_factory
+        preprocessor.fs = self.fs
+        self.person_factory = PersonFactory(
+            TemplatesFactory(preprocessor, feature_extractor)
+        )
 
     def __iter__(self):
         return self
 
+    @abstractmethod
     def __next__(self) -> Person:
+        pass
+
+    @property
+    @abstractmethod
+    def fs(self) -> float:
         pass
 
 
 class GetSBData(DataSource):
 
-    def __init__(self, filename, person_factory: PersonFactory):
-        super().__init__(filename, person_factory)
-        self.fs = 1000
+    def __init__(self, filename, preprocessor: Preprocessor, feature_extractor: FeatureExtractor):
+        super().__init__(filename, preprocessor, feature_extractor)
+
         self.person_signals = {}
         filelist = iter(os.listdir(os.fsencode(self.filename)))
         for filename in filelist:
@@ -35,19 +48,26 @@ class GetSBData(DataSource):
             except:
                 self.person_signals[person] = [signal[:, 1]]
 
+    @property
+    def fs(self) -> float:
+        return 1000
+
     def __next__(self) -> Person:
         try:
             person = self.person
             self.person += 1
-            return self.person_factory.create(self.person_signals[person], person-1, self.fs)
+            return self.person_factory.create(self.person_signals[person], person-1)
         except KeyError:
             raise StopIteration
 
 
 class GetEcgIDData(DataSource):
 
+    @property
+    def fs(self) -> float:
+        return 500
+
     def __next__(self) -> Person:
-        self.fs = 500
         record = 1
         person_signals = []
         if os.path.exists(self.filename + '/Person_' + f"{self.person:02}"):
@@ -60,6 +80,6 @@ class GetEcgIDData(DataSource):
                 except FileNotFoundError:
                     person = self.person
                     self.person += 1
-                    return self.person_factory.create(person_signals, person-1, self.fs)
+                    return self.person_factory.create(person_signals, person-1)
         else:
             raise StopIteration
