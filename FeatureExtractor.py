@@ -79,23 +79,24 @@ class StatisticalTimeExtractor(FeatureExtractor):
 
         return features.tolist()
 
+
 class DiscreteCosineExtractor(FeatureExtractor):
 
     def detect_R(self, signal: Signal) -> List[int]:
         r_peaks = processing.gqrs_detect(sig=signal, fs=self.fs)
         return r_peaks
-    
+
     def autocorrelation(self, signal: Signal, num_coefficients: int) -> List[int]:
         autocorr_result = np.correlate(signal, signal, mode='full')
-        autocorr_result = autocorr_result[len(autocorr_result)//2:]
+        autocorr_result = autocorr_result[len(autocorr_result) // 2:]
         return autocorr_result[:num_coefficients]
-    
+
     def extract(self, signal: Signal) -> List[Features]:
         r_peaks = self.detect_R(signal)
         pre_r = int(0.2 * self.fs)
         post_r = int(0.4 * self.fs)
 
-        features = []
+        features = []  # Initialize as a list
         for r_peak in r_peaks:
             start = max(0, r_peak - pre_r)
             end = min(len(signal), r_peak + post_r)
@@ -106,16 +107,17 @@ class DiscreteCosineExtractor(FeatureExtractor):
                 cycle = np.pad(cycle, (0, target_length - len(cycle)), mode='constant')
             else:
                 cycle = cycle[:target_length]
-            
+
             autocorr_coefficients = self.autocorrelation(cycle, num_coefficients=21)
             feature_vector = dct(autocorr_coefficients, norm='ortho')
-            features = np.append(features, feature_vector)
+            features.append(feature_vector)  # Use list append
 
-            try:
-                features = np.array(features)
-                # print(f"Features shape after conversion to np.array: {features.shape}")
-            except ValueError as e:
-                print("ValueError during np.array conversion:", e)
-                raise
+        try:
+            features = np.array(features)  # Convert to NumPy array after the loop
+            # Optionally, you can verify the shape here
+            # print(f"Features shape after conversion to np.array: {features.shape}")
+        except ValueError as e:
+            print("ValueError during np.array conversion:", e)
+            raise
 
         return features.tolist()

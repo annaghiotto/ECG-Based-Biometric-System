@@ -26,11 +26,12 @@ else:
 # Perform the train-test split
 train, test = train_test_split(data, 0.2)
 
+
 # Initialize the classifier
 classifier = XGBoostClassifier(threshold=0.5)
 
 # Fit the classifier
-classifier.fit(train, test)
+classifier.fit(train, train)
 
 # Test classifier predictions
 for person in test:
