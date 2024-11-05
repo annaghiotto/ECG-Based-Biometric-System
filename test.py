@@ -30,7 +30,7 @@ train, test = train_test_split(data, 0.2)
 classifier = XGBoostClassifier(threshold=0.5)
 
 # Fit the classifier
-classifier.fit(train)
+classifier.fit(train, test)
 
 # Test classifier predictions
 for person in test:

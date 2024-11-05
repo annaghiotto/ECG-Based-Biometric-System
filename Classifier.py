@@ -25,13 +25,21 @@ class XGBoostClassifier(Classifier):
     def __post_init__(self):
         self.model = xgb.XGBClassifier(objective="multi:softmax", verbosity=2)
 
-    def fit(self, person_list: List[Person]):
+    def fit(self, train: List[Person], eval: List[Person]):
         X = [
             template
-            for person in person_list
+            for person in train
             for template in person.templates_flat
         ]
-        y = [person.uid for person in person_list for _ in person.templates_flat]
+        y = [person.uid for person in train for _ in person.templates_flat]
+
+        eval_X = [
+            template
+            for person in eval
+            for template in person.templates_flat
+        ]
+
+        eval_y = [person.uid for person in eval for _ in person.templates_flat]
 
         n_classes = np.unique(y).shape[0]
         self.model.n_classes_ = n_classes
@@ -40,7 +48,7 @@ class XGBoostClassifier(Classifier):
         print("Starting model training with iteration logging:")
         self.model.fit(
             X, y,
-            eval_set=[(X, y)],
+            eval_set=[(eval_X, eval_y)],
             verbose=True
         )
         print("Model training complete.")
