@@ -6,6 +6,7 @@ from scipy.fft import dct
 from scipy.stats import kurtosis, skew
 from sklearn.decomposition import PCA
 from wfdb import processing
+from statsmodels.tsa.ar_model import AutoReg
 
 from FSBase import FSBase
 from custom_types import Signal, Features, Template
@@ -125,7 +126,6 @@ class PCAExtractor(FeatureExtractor):
         return r_peaks
     
     def extract(self, signal: Signal) -> List[Features]:
-        # Rileva i picchi R
         r_peaks = self.detect_R(signal)
         pre_r = int(0.2 * self.fs)
         post_r = int(0.4 * self.fs)
@@ -154,4 +154,14 @@ class PCAExtractor(FeatureExtractor):
 
         return principal_components.tolist()
 
-    
+
+class SARModelExtractor(FeatureExtractor):
+
+    def fit_sar_model(self, signal):
+        # AR Coefficients calculation
+        model = AutoReg(signal, lags=4, old_names=False).fit()
+        return model.params[1:]
+
+    def extract(self, signal: Signal) -> List[Features]:
+        sar_coefficients = self.fit_sar_model(signal)
+        return sar_coefficients.tolist()
