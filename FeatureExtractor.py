@@ -115,6 +115,8 @@ class DiscreteCosineExtractor(FeatureExtractor):
             print("ValueError during np.array conversion:", e)
             raise
 
+        print(features.shape)
+
         return features.tolist()
     
 
@@ -151,5 +153,7 @@ class PCAExtractor(FeatureExtractor):
 
         pca = PCA(n_components=min(segments_matrix.shape[0], segments_matrix.shape[1]))
         principal_components = pca.fit_transform(segments_matrix)
+
+        print(principal_components.shape)
 
         return principal_components.tolist()
