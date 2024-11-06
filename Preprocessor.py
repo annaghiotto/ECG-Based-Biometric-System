@@ -36,3 +36,21 @@ class BasicPreprocessor(Preprocessor):
         w0 = freq * 2 / self.fs
         b, a = iirnotch(w0, quality_factor)
         return lfilter(b, a, signal)
+    
+
+class SARModelPreprocessor(Preprocessor):
+    def preprocess(self, signal: Signal) -> Signal:
+        signal = self.highpass_filter(signal, 2.)
+        signal = self.notch_filter(signal, 50)
+        return signal
+    
+    def highpass_filter(self, signal: Signal, cutoff: float) -> Signal:
+        w_cut = cutoff * 2 / self.fs
+        b, a = butter(N=1, Wn=w_cut, btype='high', analog=False)
+        return lfilter(b, a, signal)
+    
+    def notch_filter(self, signal: Signal, freq: float, quality_factor: float = 30.0) -> Signal:
+        w0 = freq * 2 / self.fs
+        b, a = iirnotch(w0, quality_factor)
+        return lfilter(b, a, signal)
+    

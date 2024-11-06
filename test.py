@@ -4,7 +4,7 @@ import os
 from Classifier import XGBoostClassifier
 from DataSource import GetEcgIDData
 from FeatureExtractor import StatisticalTimeExtractor, DiscreteCosineExtractor, PCAExtractor
-from Preprocessor import BasicPreprocessor
+from Preprocessor import BasicPreprocessor, SARModelPreprocessor
 from utils import train_test_split
 
 # Define the cache file path
