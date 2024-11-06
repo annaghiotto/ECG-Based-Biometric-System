@@ -5,7 +5,7 @@ from Classifier import XGBoostClassifier
 from DataSource import GetEcgIDData
 from FeatureExtractor import StatisticalTimeExtractor, DiscreteCosineExtractor
 from Preprocessor import BasicPreprocessor
-from utils import train_test_split
+from utils import train_test_split, k_fold_split
 
 # Define the cache file path
 cache_file = 'data_cache.pkl'
@@ -24,16 +24,29 @@ else:
 
 
 # Perform the train-test split
-train, test = train_test_split(data, 0.2)
+# train, test = train_test_split(data, 0.2)
+# print("Train: ", train)
+#
+#
+# # Initialize the classifier
+# classifier = XGBoostClassifier(threshold=0.5)
+#
+# # Fit the classifier
+# classifier.fit(train, test)
+#
+# # Test classifier predictions
+# for person in test:
+#     print(person.uid, classifier.identify(person))
+#     print(person.uid, classifier.authenticate(person))
 
 
-# Initialize the classifier
-classifier = XGBoostClassifier(threshold=0.5)
+# KFold
+k = 2  # Number of folds
+folds = k_fold_split(data, k)
 
-# Fit the classifier
-classifier.fit(train, train)
+for train, test in folds:
+    # Initialize the classifier
+    classifier = XGBoostClassifier(threshold=0.5)
 
-# Test classifier predictions
-for person in test:
-    print(person.uid, classifier.identify(person))
-    print(person.uid, classifier.authenticate(person))
+    # Fit the classifier
+    classifier.fit(train, test)
