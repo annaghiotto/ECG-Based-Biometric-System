@@ -172,6 +172,9 @@ class PCAExtractor(FeatureExtractor):
 
 
 class SARModelExtractor(FeatureExtractor):
+    def detect_R(self, signal: Signal) -> List[int]:
+        r_peaks = processing.gqrs_detect(sig=signal, fs=self.fs)
+        return r_peaks
 
     def fit_sar_model(self, signal):
         # AR Coefficients calculation
@@ -179,6 +182,31 @@ class SARModelExtractor(FeatureExtractor):
         return model.params[1:]
 
     def extract(self, signal: Signal) -> List[Features]:
-        sar_coefficients = self.fit_sar_model(signal)
-        print(sar_coefficients.shape)
-        return [sar_coefficients]
+        r_peaks = self.detect_R(signal)
+        pre_r = int(0.2 * self.fs)
+        post_r = int(0.4 * self.fs)
+        
+        cycles = []
+        for r_peak in r_peaks:
+            start = max(0, r_peak - pre_r)
+            end = min(len(signal), r_peak + post_r)
+            cycle = signal[start:end]
+            
+            target_length = pre_r + post_r
+            if len(cycle) < target_length:
+                cycle = np.pad(cycle, (0, target_length - len(cycle)), mode='constant')
+            else:
+                cycle = cycle[:target_length]
+            
+            cycles.append(cycle)
+
+        features = []
+        n_cycles = 3
+        for i in range(0, len(cycles) - 4, n_cycles):
+            # Concatenates n_cycles heartbeats in 1 segment
+            segment = np.concatenate(cycles[i:i + n_cycles])
+
+            sar_coefficients = self.fit_sar_model(segment)
+            features.append(sar_coefficients)
+
+        return features
