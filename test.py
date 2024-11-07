@@ -3,7 +3,7 @@ import os
 
 from Classifier import XGBoostClassifier
 from DataSource import GetEcgIDData, GetSBData
-from FeatureExtractor import StatisticalTimeExtractor, DiscreteCosineExtractor, PCAExtractor, SARModelExtractor
+from FeatureExtractor import StatisticalTimeExtractor, DiscreteCosineExtractor, PCAExtractor, SARModelExtractor, StatisticalTimeFreqExtractor
 from Preprocessor import BasicPreprocessor, SARModelPreprocessor
 from utils import train_test_split
 
@@ -18,7 +18,7 @@ if os.path.exists(cache_file):
 else:
     print("Loading data from source and caching it...")
     # data = [person for person in GetSBData('SB_ECGDatabase_01', SARModelPreprocessor(), SARModelExtractor())]
-    data = [person for person in GetEcgIDData('ecg-id-database-1.0.0', BasicPreprocessor(), PCAExtractor(10))]
+    data = [person for person in GetEcgIDData('ecg-id-database-1.0.0', BasicPreprocessor(), StatisticalTimeFreqExtractor())]
 
     # Cache the data for future runs
     with open(cache_file, 'wb') as f:

@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from typing import List
 
 import numpy as np
-from scipy.fft import dct
+from scipy.fft import dct, fft
 from scipy.stats import kurtosis, skew
 from sklearn.decomposition import PCA
 from wfdb import processing
@@ -214,3 +214,58 @@ class SARModelExtractor(FeatureExtractor):
             features.append(sar_coefficients)
 
         return features
+
+
+class StatisticalTimeFreqExtractor(FeatureExtractor):
+    
+    def detect_R(self, signal: Signal) -> List[int]:
+        r_peaks = processing.gqrs_detect(sig=signal, fs=self.fs)
+        return r_peaks
+
+    def extract(self, signal: Signal) -> List[Features]:
+        r_peaks = self.detect_R(signal)
+        pre_r = int(0.2 * self.fs)
+        post_r = int(0.4 * self.fs)
+        
+        features = []
+        for r_peak in r_peaks:
+            start = max(0, r_peak - pre_r)
+            end = min(len(signal), r_peak + post_r)
+            cycle = signal[start:end]
+
+            target_length = pre_r + post_r
+            if len(cycle) < target_length:
+                cycle = np.pad(cycle, (0, target_length - len(cycle)), mode='constant')
+            else:
+                cycle = cycle[:target_length]
+
+            mean = np.mean(cycle)
+            std_dev = np.std(cycle)
+            p25 = np.percentile(cycle, 25)
+            p75 = np.percentile(cycle, 75)
+            iqr = p75 - p25
+            kurt = kurtosis(cycle)
+            skewness = skew(cycle)
+
+            fft_values = fft(cycle)
+            fft_magnitude = np.abs(fft_values[:len(fft_values) // 2])
+            fft_power = fft_magnitude ** 2
+
+            mean_power = np.mean(fft_power)
+            max_power = np.max(fft_power)
+            dominant_frequency = np.argmax(fft_power) * (self.fs / len(cycle))
+
+            feature_vector = [
+                mean, std_dev, p25, p75, iqr, kurt, skewness,  # Time domain features
+                mean_power, max_power, dominant_frequency       # Frequency domain features
+            ]
+
+            features.append(feature_vector)
+
+        try:
+            features = np.array(features)
+        except ValueError as e:
+            print("ValueError during np.array conversion:", e)
+            raise
+
+        return features.tolist()
