@@ -3,7 +3,7 @@ import os
 
 from Classifier import XGBoostClassifier
 from DataSource import GetEcgIDData
-from FeatureExtractor import StatisticalTimeExtractor, DiscreteCosineExtractor, PCAExtractor
+from FeatureExtractor import StatisticalTimeExtractor, DiscreteCosineExtractor, PCAExtractor, SARModelExtractor
 from Preprocessor import BasicPreprocessor, SARModelPreprocessor
 from utils import train_test_split
 
@@ -17,7 +17,7 @@ if os.path.exists(cache_file):
         data = pickle.load(f)
 else:
     print("Loading data from source and caching it...")
-    data = [person for person in GetEcgIDData('ecg-id-database-1.0.0', BasicPreprocessor(), PCAExtractor())]
+    data = [person for person in GetEcgIDData('ecg-id-database-1.0.0', BasicPreprocessor(), PCAExtractor(10))]
     # Cache the data for future runs
     with open(cache_file, 'wb') as f:
         pickle.dump(data, f)

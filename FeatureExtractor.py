@@ -1,4 +1,5 @@
 from abc import ABC
+from dataclasses import dataclass
 from typing import List
 
 import numpy as np
@@ -12,7 +13,11 @@ from FSBase import FSBase
 from custom_types import Signal, Features, Template
 
 
+@dataclass
 class FeatureExtractor(ABC, FSBase):
+    def __post_init__(self):
+        super().__init__()
+
     def __call__(self, signals: List[Signal]) -> List[Template]:
         return [self.extract(signal) for signal in signals]
 
@@ -76,7 +81,9 @@ class StatisticalTimeExtractor(FeatureExtractor):
         return features.tolist()
 
 
+@dataclass
 class DiscreteCosineExtractor(FeatureExtractor):
+    n_features: int
 
     def detect_R(self, signal: Signal) -> List[int]:
         r_peaks = processing.gqrs_detect(sig=signal, fs=self.fs)
@@ -104,7 +111,7 @@ class DiscreteCosineExtractor(FeatureExtractor):
             else:
                 cycle = cycle[:target_length]
 
-            autocorr_coefficients = self.autocorrelation(cycle, num_coefficients=21)
+            autocorr_coefficients = self.autocorrelation(cycle, num_coefficients=self.n_features)
             feature_vector = dct(autocorr_coefficients, norm='ortho')
             features.append(feature_vector)  # Use list append
 
@@ -117,14 +124,23 @@ class DiscreteCosineExtractor(FeatureExtractor):
             raise
 
         return features.tolist()
-    
 
+
+@dataclass
 class PCAExtractor(FeatureExtractor):
+    """
+    Principal Component Analysis (PCA) feature extractor.
+
+    Attributes:
+        n_features: int
+        Between 0 and min(n_samples, n_features)
+    """
+    n_features: int
 
     def detect_R(self, signal: Signal) -> List[int]:
         r_peaks = processing.gqrs_detect(sig=signal, fs=self.fs)
         return r_peaks
-    
+
     def extract(self, signal: Signal) -> List[Features]:
         r_peaks = self.detect_R(signal)
         pre_r = int(0.2 * self.fs)
@@ -149,7 +165,7 @@ class PCAExtractor(FeatureExtractor):
 
         segments_matrix = np.array(segments)
 
-        pca = PCA(n_components=min(segments_matrix.shape[0], segments_matrix.shape[1]))
+        pca = PCA(n_components=self.n_features)
         principal_components = pca.fit_transform(segments_matrix)
 
         return principal_components.tolist()
@@ -164,4 +180,5 @@ class SARModelExtractor(FeatureExtractor):
 
     def extract(self, signal: Signal) -> List[Features]:
         sar_coefficients = self.fit_sar_model(signal)
-        return sar_coefficients.tolist()
+        print(sar_coefficients.shape)
+        return [sar_coefficients]
