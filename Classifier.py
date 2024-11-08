@@ -2,9 +2,13 @@ from abc import ABC
 from dataclasses import dataclass, field
 from typing import List, Optional, Tuple
 import numpy as np
+from sklearn.metrics import accuracy_score, roc_curve, auc, roc_auc_score
+from scipy.optimize import brentq
+from scipy.interpolate import interp1d
+
+from Person import Person
 from sklearn.preprocessing import LabelEncoder, StandardScaler
 import xgboost as xgb
-from Person import Person  # Ensure this is correctly defined in your project
 
 
 @dataclass
@@ -101,6 +105,48 @@ class XGBoostClassifier(Classifier):
             verbose=True
         )
         print("Model training complete.")
+        y_pred = self.model.predict(eval_X)
+        accuracy = accuracy_score(eval_y, y_pred)
+        print(f"Accuracy: {accuracy}")
+
+        y_true = []
+        y_scores = []
+
+        for person in eval_set:
+            for template in person.templates_flat:
+                prediction_proba = self.model.predict_proba([template])[0]
+
+                if prediction_proba[person.uid] >= self.threshold:
+                    y_true.append(1)
+                    y_scores.append(prediction_proba[person.uid])
+
+                elif any(element >= self.threshold for element in prediction_proba):
+                    for element in prediction_proba:
+                        if element >= self.threshold:
+                            y_true.append(0)
+                            y_scores.append(element)
+
+        fpr, tpr, thresholds = roc_curve(y_true, y_scores)
+        # Filter out zero or near-zero differences in fpr for stability
+        fpr, tpr = np.array(fpr), np.array(tpr)
+        unique_fpr_indices = np.where(np.diff(fpr) > 1e-6)[0]
+        if len(unique_fpr_indices) < 2:
+            print("Error: Insufficient unique FPR values to compute ROC curve.")
+        else:
+            fnr = 1 - tpr
+            # Find the threshold where the difference between FPR and FNR is smallest
+            eer_index = np.nanargmin(np.abs(fpr - fnr))
+            eer_threshold = thresholds[eer_index]
+            eer = fpr[eer_index]
+
+            print(f"EER: {eer}")
+            print(f"EER Threshold: {eer_threshold}")
+        try:
+            auc = roc_auc_score(y_true, y_scores)
+            print(f"AUC: {auc}")
+        except ValueError:
+            print("Error: Insufficient unique FPR values to compute ROC curve.")
+
 
     def identify(self, person: Person) -> Optional[int]:
         """
