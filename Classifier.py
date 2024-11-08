@@ -104,7 +104,11 @@ class XGBoostClassifier(Classifier):
             eval_set=[(X_eval, y_eval)],
             verbose=True
         )
-        print("Model training complete.")
+
+    def evaluate(self, eval_set: List[Person]):
+
+        X_eval, y_eval = self.preprocess_data(eval_set, fit_scaler=False)
+
         y_pred = self.model.predict(X_eval)
         accuracy = accuracy_score(y_eval, y_pred)
         print(f"Accuracy: {accuracy}")
@@ -146,7 +150,6 @@ class XGBoostClassifier(Classifier):
             print(f"AUC: {auc}")
         except ValueError:
             print("Error: Insufficient unique FPR values to compute ROC curve.")
-
 
     def identify(self, person: Person) -> Optional[int]:
         """

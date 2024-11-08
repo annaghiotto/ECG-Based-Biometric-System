@@ -5,7 +5,7 @@ from Classifier import XGBoostClassifier
 from DataSource import GetEcgIDData
 from FeatureExtractor import StatisticalTimeExtractor
 from Preprocessor import PanTompkinsPreprocessor
-from utils import train_test_split
+from utils import train_test_split, k_fold_split
 
 # Define the cache file path
 cache_file = 'data_cache.pkl'
@@ -32,6 +32,8 @@ classifier = XGBoostClassifier(threshold=0.5)
 # Fit the classifier
 classifier.fit(train, train)
 
+classifier.evaluate(test)
+
 # Test classifier predictions
 correct_identifications = 0
 successful_authentications = 0
@@ -54,3 +56,41 @@ for person in test:
 
 print(f"Correct identifications: {correct_identifications} out of {len(test)} ({(correct_identifications / len(test)) * 100:.2f}%)")
 print(f"Successful authentications: {successful_authentications} out of {len(test)} ({(successful_authentications / len(test)) * 100:.2f}%)")
+
+# KFold
+k = 3  # Number of folds
+folds = k_fold_split(data, k)
+
+print("################# K-fold cross-validation, k=", k, " #################")
+
+f = 1
+for train, test in folds:
+    print("####### Fold ", f, "/", k, "#######")
+    f += 1
+    # Initialize the classifier
+    classifier = XGBoostClassifier(threshold=0.5)
+
+    # Fit the classifier
+    classifier.fit(train, train)
+
+    classifier.evaluate(test)
+
+    # Test classifier predictions
+    correct_identifications = 0
+    successful_authentications = 0
+    for person in test:
+        identified_uid = classifier.identify(person)
+        is_authenticated = classifier.authenticate(person)
+
+        # Check if identification is correct
+        if identified_uid == person.uid:
+            correct_identifications += 1
+
+        # Check if authentication is correct
+        if is_authenticated:
+            successful_authentications += 1
+
+    print(
+        f"Correct identifications: {correct_identifications} out of {len(test)} ({(correct_identifications / len(test)) * 100:.2f}%)")
+    print(
+        f"Successful authentications: {successful_authentications} out of {len(test)} ({(successful_authentications / len(test)) * 100:.2f}%)")
