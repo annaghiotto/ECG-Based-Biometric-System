@@ -2,4 +2,7 @@ numpy~=2.1.2
 wfdb~=4.1.2
 scikit-learn~=1.5.2
 xgboost~=2.1.2
-tqdm
+tqdm~=4.66.6
+scipy~=1.14.1
+statsmodels~=0.14.4
+hmmlearn~=0.3.3

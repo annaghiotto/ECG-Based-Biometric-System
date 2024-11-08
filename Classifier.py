@@ -1,9 +1,10 @@
 from abc import ABC
-from dataclasses import dataclass
-from typing import List
+from dataclasses import dataclass, field
+from typing import List, Optional, Tuple
 import numpy as np
-from Person import Person
+from sklearn.preprocessing import LabelEncoder, StandardScaler
 import xgboost as xgb
+from Person import Person  # Ensure this is correctly defined in your project
 
 
 @dataclass
@@ -13,7 +14,7 @@ class Classifier(ABC):
     def fit(self, train: List[Person], eval_set: List[Person]):
         pass
 
-    def identify(self, person: Person) -> int | None:
+    def identify(self, person: Person) -> Optional[int]:
         pass
 
     def authenticate(self, person: Person) -> bool:
@@ -22,56 +23,147 @@ class Classifier(ABC):
 
 @dataclass
 class XGBoostClassifier(Classifier):
-    def __post_init__(self):
-        self.model = xgb.XGBClassifier(objective="multi:softmax", verbosity=2)
+    scaler: StandardScaler = field(default_factory=StandardScaler, init=False)
+    label_encoder: LabelEncoder = field(default_factory=LabelEncoder, init=False)
+    model: xgb.XGBClassifier = field(default=None, init=False)
 
-    def fit(self, train: List[Person], eval_set: List[Person]):
+    def __post_init__(self):
+        self.model = xgb.XGBClassifier(
+            objective="multi:softmax",
+            verbosity=2,
+            eval_metric='mlogloss'
+        )
+
+    def preprocess_data(self, data: List[Person], fit_scaler: bool = False) -> Tuple[np.ndarray, np.ndarray]:
+        """
+        Preprocess the data by extracting features and labels, handling missing values,
+        scaling features, and encoding labels.
+
+        Parameters:
+            data (List[Person]): The input data to preprocess.
+            fit_scaler (bool): Whether to fit the scaler on the data.
+
+        Returns:
+            X (np.ndarray): The preprocessed feature matrix.
+            y (np.ndarray): The encoded labels.
+        """
+        # Extract features and labels
         X = [
             template
-            for person in train
+            for person in data
             for template in person.templates_flat
         ]
-        y = [person.uid for person in train for _ in person.templates_flat]
-
-        eval_X = [
-            template
-            for person in eval_set
-            for template in person.templates_flat
+        y = [
+            person.uid
+            for person in data
+            for _ in person.templates_flat
         ]
 
-        eval_y = [person.uid for person in eval_set for _ in person.templates_flat]
+        X = np.array(X)
+        y = np.array(y)
 
-        n_classes = np.unique(y).shape[0]
-        self.model.n_classes_ = n_classes
+        # Handle missing values if any
+        if np.isnan(X).any():
+            # Replace NaNs with the mean of each feature
+            col_means = np.nanmean(X, axis=0)
+            inds = np.where(np.isnan(X))
+            X[inds] = np.take(col_means, inds[1])
 
-        print(np.array(X).shape)
+        # Scale features
+        if fit_scaler:
+            X = self.scaler.fit_transform(X)
+        else:
+            X = self.scaler.transform(X)
 
-        # Fit model with evaluation and logging
-        print("Starting model training with iteration logging:")
+        # Encode labels
+        if fit_scaler and not hasattr(self.label_encoder, 'classes_'):
+            y = self.label_encoder.fit_transform(y)
+        else:
+            y = self.label_encoder.transform(y)
+
+        return X, y
+
+    def fit(self, train: List[Person], eval_set: List[Person]):
+        """
+        Fit the XGBoost classifier on the preprocessed training data.
+
+        Parameters:
+            train (List[Person]): The training data.
+            eval_set (List[Person]): The evaluation data for monitoring.
+        """
+        X_train, y_train = self.preprocess_data(train, fit_scaler=True)
+
+        X_eval, y_eval = self.preprocess_data(eval_set, fit_scaler=False)
+
         self.model.fit(
-            X, y,
-            eval_set=[(eval_X, eval_y)],
+            X_train, y_train,
+            eval_set=[(X_eval, y_eval)],
             verbose=True
         )
         print("Model training complete.")
 
-    def identify(self, person: Person) -> int | None:
-        predicted_classes = []
-        for template in person.templates_flat:
-            prediction_proba = self.model.predict_proba([template])[0]
-            prediction = np.argmax(prediction_proba)
-            max_proba = prediction_proba[prediction]
+    def identify(self, person: Person) -> Optional[int]:
+        """
+        Identify the user based on the given person's ECG templates.
 
-            if max_proba >= self.threshold:
-                predicted_classes.append(prediction)
+        Parameters:
+            person (Person): The person to identify.
 
-        if len(predicted_classes) == 0:
+        Returns:
+            int | None: The predicted user ID or None if no prediction meets the threshold.
+        """
+        if not person.templates_flat:
             return None
 
-        return max(set(predicted_classes), key=predicted_classes.count)
+        X = np.array(person.templates_flat)
+
+        if np.isnan(X).any():
+            col_means = self.scaler.mean_
+            inds = np.where(np.isnan(X))
+            X[inds] = np.take(col_means, inds[1])
+
+        X_scaled = self.scaler.transform(X)
+
+        prediction_proba = self.model.predict_proba(X_scaled)
+
+        predicted_classes = []
+        for proba in prediction_proba:
+            predicted_class = np.argmax(proba)
+            max_proba = proba[predicted_class]
+            if max_proba >= self.threshold:
+                predicted_classes.append(predicted_class)
+
+        if not predicted_classes:
+            return None
+
+        return int(np.bincount(predicted_classes).argmax())
 
     def authenticate(self, person: Person) -> bool:
-        random_template_idx = np.random.randint(0, len(person.templates_flat))
-        random_template = person.templates_flat[random_template_idx]
-        prediction_proba = self.model.predict_proba([random_template])[0]
-        return prediction_proba[person.uid] >= self.threshold
+        """
+        Authenticate the user based on a random template from the person's ECG.
+
+        Parameters:
+            person (Person): The person to authenticate.
+
+        Returns:
+            bool: True if authenticated successfully, False otherwise.
+        """
+        if not person.templates_flat:
+            return False
+
+        random_template = person.templates_flat[np.random.randint(len(person.templates_flat))]
+
+        X = np.array([random_template])
+
+        if np.isnan(X).any():
+            col_means = self.scaler.mean_
+            inds = np.where(np.isnan(X))
+            X[inds] = np.take(col_means, inds[1])
+
+        X_scaled = self.scaler.transform(X)
+
+        prediction_proba = self.model.predict_proba(X_scaled)[0]
+
+        true_label_encoded = self.label_encoder.transform([person.uid])[0]
+
+        return prediction_proba[true_label_encoded] >= self.threshold
