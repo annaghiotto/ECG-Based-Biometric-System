@@ -19,18 +19,13 @@ def k_fold_split(data: List[Person], k: int) -> List[Tuple[List[Person], List[Pe
     for _ in range(k):
         all_folds.append(([], []))
 
-    print("Fold test")
-    print(all_folds[0][0])
     for person in data:
         person_fold = person.k_fold_split(k)
         i = 0
         for fold in person_fold:
             all_folds[i][0].append(fold[0])
             all_folds[i][1].append(fold[1])
-            i+=1
+            i += 1
 
-    print("all_folds: ", len(all_folds))
-    print("all_folds[0]: ", len(all_folds[0][0]))
-    print("all_folds[0]: ", len(all_folds[2][0]))
     return all_folds
 
