@@ -87,36 +87,4 @@ class PanTompkinsPreprocessor(Preprocessor):
         integrated_signal[window_size:] = (cumulative_sum[window_size:] - cumulative_sum[:-window_size]) / window_size
         integrated_signal[:window_size] = cumulative_sum[:window_size] / np.arange(1, window_size + 1)
         
-        return integrated_signal 
-
-"""class PanTompkinsPreprocessor(Preprocessor):
-
-    def preprocess(self, signal: Signal) -> Signal:
-        signal = self.bandpass_filter(signal, 5., 15.)
-        signal = self.derivative_filter(signal)
-        signal = self.squaring(signal)
-        signal = self.moving_window_integration(signal)
-        return signal
-    
-    def bandpass_filter(self, signal: Signal, lower_fr: float, higher_fr: float) -> Signal:
-        w_low = lower_fr * 2 / self.fs
-        w_high = higher_fr * 2 / self.fs
-        b, a = butter(N=2, Wn=[w_low, w_high], btype='band')
-        return lfilter(b, a, signal)
-
-    def derivative_filter(self, signal: Signal) -> Signal:
-        return np.diff(signal, prepend=signal[0])
-
-    def squaring(self, signal: Signal) -> Signal:
-        return np.power(signal, 2)
-
-    def moving_window_integration(self, signal: Signal, window_size: int = None) -> Signal:
-        if window_size is None:
-            window_size = int(0.08 * self.fs)
-
-        cumulative_sum = np.cumsum(signal)
-        integrated_signal = np.zeros_like(signal)
-        integrated_signal[window_size:] = (cumulative_sum[window_size:] - cumulative_sum[:-window_size]) / window_size
-        integrated_signal[:window_size] = cumulative_sum[:window_size] / np.arange(1, window_size + 1)
-        
-        return integrated_signal"""
+        return integrated_signal
