@@ -105,8 +105,8 @@ class XGBoostClassifier(Classifier):
             verbose=True
         )
         print("Model training complete.")
-        y_pred = self.model.predict(eval_X)
-        accuracy = accuracy_score(eval_y, y_pred)
+        y_pred = self.model.predict(X_eval)
+        accuracy = accuracy_score(y_eval, y_pred)
         print(f"Accuracy: {accuracy}")
 
         y_true = []
