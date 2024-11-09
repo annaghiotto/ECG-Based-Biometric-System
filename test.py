@@ -4,7 +4,7 @@ import os
 from Classifier import XGBoostClassifier
 from DataSource import GetEcgIDData
 from FeatureExtractor import StatisticalTimeExtractor
-from Preprocessor import PanTompkinsPreprocessor, BasicPreprocessor
+from Preprocessor import BasicPreprocessor
 from utils import train_test_split, k_fold_split
 
 # Define the cache file path

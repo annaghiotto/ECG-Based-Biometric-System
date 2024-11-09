@@ -127,8 +127,6 @@ class DCTExtractor(FeatureExtractor):
             print("ValueError during np.array conversion:", e)
             raise
 
-        print(features.shape)
-
         return features.tolist()
 
 
@@ -173,8 +171,6 @@ class PCAExtractor(FeatureExtractor):
 
         pca = PCA(n_components=self.n_features)
         principal_components = pca.fit_transform(segments_matrix)
-
-        print(principal_components.shape)
 
         return principal_components.tolist()
 
@@ -280,7 +276,7 @@ class HMMExtractor(FeatureExtractor):
     HMM-based feature extractor for ECG signals.
     Extracts features for each ECG segment (heartbeat) using a trained HMM.
     """
-    n_components: int = 4  # Number of hidden states
+    n_components: int = 5  # Number of hidden states
     covariance_type: str = "diag"
     n_iter: int = 100
     model: Any = field(default=None, init=False)
