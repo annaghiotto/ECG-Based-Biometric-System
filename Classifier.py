@@ -111,7 +111,6 @@ class XGBoostClassifier(Classifier):
 
         y_pred = self.model.predict(X_eval)
         accuracy = accuracy_score(y_eval, y_pred)
-        print(f"Accuracy: {accuracy}")
 
         y_true = []
         y_scores = []
@@ -136,20 +135,22 @@ class XGBoostClassifier(Classifier):
         unique_fpr_indices = np.where(np.diff(fpr) > 1e-6)[0]
         if len(unique_fpr_indices) < 2:
             print("Error: Insufficient unique FPR values to compute ROC curve.")
+            eer = None
+            eer_threshold = None
         else:
             fnr = 1 - tpr
             # Find the threshold where the difference between FPR and FNR is smallest
             eer_index = np.nanargmin(np.abs(fpr - fnr))
             eer_threshold = thresholds[eer_index]
             eer = fpr[eer_index]
-
-            print(f"EER: {eer}")
-            print(f"EER Threshold: {eer_threshold}")
         try:
             auc = roc_auc_score(y_true, y_scores)
-            print(f"AUC: {auc}")
         except ValueError:
             print("Error: Insufficient unique FPR values to compute ROC curve.")
+            auc = None
+
+
+        return accuracy, eer, eer_threshold, auc
 
     def identify(self, person: Person) -> Optional[int]:
         """
