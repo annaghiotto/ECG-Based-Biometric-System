@@ -26,7 +26,7 @@ class GetSBData(TqdmIteratorBase):
         :param desc: Description for the tqdm progress bar.
         :param tqdm_kwargs: Additional keyword arguments for tqdm.
         """
-        # Initialize person_signals
+        # Initialize dictionary to store signals for each person
         self.person_signals = {}
         self.filename = filename
 
@@ -35,19 +35,18 @@ class GetSBData(TqdmIteratorBase):
         for file in filelist:
             filepath = os.path.join(self.filename, file)
             if os.path.isfile(filepath):
-                # print(f"Processing file: {filepath}")
+                # Load signal data from file
                 signal = np.loadtxt(filepath)
                 try:
-                    # Extract person number from filename
-                    # Assumes filename format contains '_u<person_number>.'
+                    # Extract person number from filename (assumes '_u<person_number>.' format)
                     person_str = file.split('_')[2]
                     person_number = int(person_str.split('u')[1].split('.')[0])
-                    # Append the signal (assuming second column)
+                    # Append the signal data (assumes second column contains the relevant signal)
                     self.person_signals.setdefault(person_number, []).append(signal[:, 1])
                 except (IndexError, ValueError) as e:
                     print(f"Skipping file {filepath} due to parsing error: {e}")
 
-        # Determine total number of persons
+        # Set total number of persons for progress tracking
         total_persons = len(self.person_signals)
 
         super().__init__(desc=desc, total=total_persons, **tqdm_kwargs)
@@ -74,6 +73,7 @@ class GetSBData(TqdmIteratorBase):
         sorted_persons = sorted(self.person_signals.keys())
         for person in sorted_persons:
             signals = self.person_signals[person]
+            # Create a Person object with the extracted signals and yield it
             yield self.person_factory.create(signals, person - 1)
 
 
@@ -99,7 +99,7 @@ class GetEcgIDData(TqdmIteratorBase):
             TemplatesFactory(preprocessor, feature_extractor)
         )
 
-        # Determine total number of persons
+        # List directories for each person in the dataset
         self.person_dirs = [
             d for d in os.listdir(self.filename)
             if os.path.isdir(os.path.join(self.filename, d)) and d.startswith('Person_')
@@ -133,13 +133,15 @@ class GetEcgIDData(TqdmIteratorBase):
             person_signals = []
             record = 1
             while True:
+                # Try to read each record file sequentially for the person
                 record_filename = os.path.join(person_path, f"rec_{record}")
                 try:
                     signal, fields = wfdb.rdsamp(record_filename)
-                    # Assuming the first column contains the desired signal
+                    # Append the signal data (assuming first column is relevant)
                     person_signals.append(signal[:, 0])
                     record += 1
                 except FileNotFoundError:
+                    # If no records are found, print a warning and skip
                     if person_signals:
                         yield self.person_factory.create(person_signals, person_number - 1)
                     else:

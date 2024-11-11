@@ -32,6 +32,7 @@ class XGBoostClassifier(Classifier):
     model: xgb.XGBClassifier = field(default=None, init=False)
 
     def __post_init__(self):
+        # Initialize XGBoost model with specific parameters
         self.model = xgb.XGBClassifier(
             objective="multi:softmax",
             verbosity=2,
@@ -96,9 +97,9 @@ class XGBoostClassifier(Classifier):
             eval_set (List[Person]): The evaluation data for monitoring.
         """
         X_train, y_train = self.preprocess_data(train, fit_scaler=True)
-
         X_eval, y_eval = self.preprocess_data(eval_set, fit_scaler=False)
 
+        # Train the model, monitoring performance on the evaluation set
         self.model.fit(
             X_train, y_train,
             eval_set=[(X_eval, y_eval)],
@@ -106,23 +107,32 @@ class XGBoostClassifier(Classifier):
         )
 
     def evaluate(self, eval_set: List[Person]):
+        """
+        Evaluate the model's performance, calculating accuracy, EER, and AUC.
 
+        Parameters:
+            eval_set (List[Person]): The evaluation dataset.
+
+        Returns:
+            accuracy (float): Accuracy score.
+            eer (float | None): Equal error rate (EER).
+            eer_threshold (float | None): Threshold at EER.
+            auc (float | None): Area under the ROC curve.
+        """
         X_eval, y_eval = self.preprocess_data(eval_set, fit_scaler=False)
-
         y_pred = self.model.predict(X_eval)
         accuracy = accuracy_score(y_eval, y_pred)
 
         y_true = []
         y_scores = []
 
+        # Calculate scores for ROC analysis
         for person in eval_set:
             for template in person.templates_flat:
                 prediction_proba = self.model.predict_proba([template])[0]
-
                 if prediction_proba[person.uid] >= self.threshold:
                     y_true.append(1)
                     y_scores.append(prediction_proba[person.uid])
-
                 elif any(element >= self.threshold for element in prediction_proba):
                     for element in prediction_proba:
                         if element >= self.threshold:
@@ -130,7 +140,8 @@ class XGBoostClassifier(Classifier):
                             y_scores.append(element)
 
         fpr, tpr, thresholds = roc_curve(y_true, y_scores)
-        # Filter out zero or near-zero differences in fpr for stability
+        
+        # Filter out zero or near-zero differences in FPR for stability
         fpr, tpr = np.array(fpr), np.array(tpr)
         unique_fpr_indices = np.where(np.diff(fpr) > 1e-6)[0]
         if len(unique_fpr_indices) < 2:
@@ -143,12 +154,12 @@ class XGBoostClassifier(Classifier):
             eer_index = np.nanargmin(np.abs(fpr - fnr))
             eer_threshold = thresholds[eer_index]
             eer = fpr[eer_index]
+
         try:
             auc = roc_auc_score(y_true, y_scores)
         except ValueError:
             print("Error: Insufficient unique FPR values to compute ROC curve.")
             auc = None
-
 
         return accuracy, eer, eer_threshold, auc
 
@@ -167,13 +178,13 @@ class XGBoostClassifier(Classifier):
 
         X = np.array(person.templates_flat)
 
+        # Handle missing values
         if np.isnan(X).any():
             col_means = self.scaler.mean_
             inds = np.where(np.isnan(X))
             X[inds] = np.take(col_means, inds[1])
 
         X_scaled = self.scaler.transform(X)
-
         prediction_proba = self.model.predict_proba(X_scaled)
 
         predicted_classes = []
@@ -205,6 +216,7 @@ class XGBoostClassifier(Classifier):
 
         X = np.array([random_template])
 
+        # Handle missing values
         if np.isnan(X).any():
             col_means = self.scaler.mean_
             inds = np.where(np.isnan(X))
@@ -213,7 +225,6 @@ class XGBoostClassifier(Classifier):
         X_scaled = self.scaler.transform(X)
 
         prediction_proba = self.model.predict_proba(X_scaled)[0]
-
         true_label_encoded = self.label_encoder.transform([person.uid])[0]
 
         return prediction_proba[true_label_encoded] >= self.threshold

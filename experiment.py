@@ -10,10 +10,6 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from multiprocessing import Pool, cpu_count
 
-import matplotlib.pyplot as plt
-import seaborn as sns
-import pandas as pd
-
 
 def plot_results(results_df: pd.DataFrame, filename="experiment_results.png"):
     """
@@ -25,6 +21,7 @@ def plot_results(results_df: pd.DataFrame, filename="experiment_results.png"):
     """
     sns.set(style="whitegrid")
 
+    # Define metrics and titles for display
     metrics = ['accuracy', 'eer', 'auc']
     metric_titles = {
         'accuracy': 'Accuracy',
@@ -34,6 +31,7 @@ def plot_results(results_df: pd.DataFrame, filename="experiment_results.png"):
 
     fig, axes = plt.subplots(1, 3, figsize=(21, 7), sharey=False)
 
+    # Generate bar plots for each metric
     for ax, metric in zip(axes, metrics):
         sns.barplot(
             data=results_df,
@@ -102,6 +100,7 @@ def process_combination(args):
         eer_list = []
         auc_list = []
 
+        # Evaluate model on each fold
         for fold_num, (train, test) in enumerate(folds, start=1):
             try:
                 cloned_classifier = XGBoostClassifier(threshold=0.5)
@@ -114,6 +113,7 @@ def process_combination(args):
                 print(f"Error during evaluation in fold {fold_num} for {data_source_name}: {e}")
                 continue
 
+        # Calculate average scores across folds
         avg_accuracy = np.mean(accuracy_list) if accuracy_list else None
         avg_eer = np.mean(eer_list) if eer_list else None
         avg_auc = np.mean(auc_list) if auc_list else None
