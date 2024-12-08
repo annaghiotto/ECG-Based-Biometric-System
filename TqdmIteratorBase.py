@@ -27,6 +27,7 @@ class TqdmIteratorBase(ABC):
         """
         with tqdm(total=self.total, desc=self.desc, **self.tqdm_kwargs) as pbar:
             for item in self.generator():
+                # Update the progress bar with each yielded item
                 pbar.update(1)
                 yield item
 
