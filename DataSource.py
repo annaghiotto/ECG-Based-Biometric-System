@@ -15,7 +15,7 @@ class GetSBData(TqdmIteratorBase):
     Iterates over persons and yields Person objects with their signals.
     """
 
-    def __init__(self, filename, preprocessor: Preprocessor, feature_extractor: FeatureExtractor, desc='GetSBData',
+    def __init__(self, filename, preprocessor: Preprocessor, feature_extractor: FeatureExtractor, desc='GetSBData', raw=False,
                  **tqdm_kwargs):
         """
         Initializes the GetSBData iterator.
@@ -27,6 +27,7 @@ class GetSBData(TqdmIteratorBase):
         :param tqdm_kwargs: Additional keyword arguments for tqdm.
         """
         # Initialize person_signals
+        self.raw = raw
         self.person_signals = {}
         self.filename = filename
 
@@ -74,7 +75,10 @@ class GetSBData(TqdmIteratorBase):
         sorted_persons = sorted(self.person_signals.keys())
         for person in sorted_persons:
             signals = self.person_signals[person]
-            yield self.person_factory.create(signals, person - 1)
+            if self.raw:
+                yield signals[0]
+            else:
+                yield self.person_factory.create(signals, person - 1)
 
 
 class GetEcgIDData(TqdmIteratorBase):
@@ -83,7 +87,7 @@ class GetEcgIDData(TqdmIteratorBase):
     Iterates over persons and yields Person objects with their records.
     """
 
-    def __init__(self, filename, preprocessor: Preprocessor, feature_extractor: FeatureExtractor, desc='GetEcgIDData',
+    def __init__(self, filename, preprocessor: Preprocessor, feature_extractor: FeatureExtractor, desc='GetEcgIDData', raw=False,
                  **tqdm_kwargs):
         """
         Initializes the GetEcgIDData iterator.
@@ -95,6 +99,7 @@ class GetEcgIDData(TqdmIteratorBase):
         :param tqdm_kwargs: Additional keyword arguments for tqdm.
         """
         self.filename = filename
+        self.raw = raw
         self.person_factory = PersonFactory(
             TemplatesFactory(preprocessor, feature_extractor)
         )
@@ -141,7 +146,10 @@ class GetEcgIDData(TqdmIteratorBase):
                     record += 1
                 except FileNotFoundError:
                     if person_signals:
-                        yield self.person_factory.create(person_signals, person_number - 1)
+                        if self.raw:
+                            yield person_signals[0]
+                        else:
+                            yield self.person_factory.create(person_signals, person_number - 1)
                     else:
                         print(f"No records found for {person_dir}. Skipping.")
                     break

@@ -1,3 +1,4 @@
+import os
 from dataclasses import dataclass
 from typing import Optional, List, Tuple
 import numpy as np
@@ -79,7 +80,8 @@ def process_combination(args):
     results = []
 
     # Load data for both ECGID and SB sources
-    data_ecg_id = list(GetEcgIDData('ecg-id-database-1.0.0', preprocessor, feature_extractor).generator())
+    ecg_id = GetEcgIDData('ecg-id-database-1.0.0', preprocessor, feature_extractor)
+    data_ecg_id = list(ecg_id.generator())
     data_sb = list(GetSBData('SB_ECGDatabase_01', preprocessor, feature_extractor).generator())
 
     for data_source_name, data in [("ECGID", data_ecg_id), ("SB", data_sb)]:
@@ -104,9 +106,9 @@ def process_combination(args):
 
         for fold_num, (train, test) in enumerate(folds, start=1):
             try:
-                cloned_classifier = XGBoostClassifier(threshold=0.5)
-                cloned_classifier.fit(train, test)
-                accuracy, eer, eer_threshold, auc_score = cloned_classifier.evaluate(test)
+                classifier = XGBoostClassifier(threshold=0.5)
+                classifier.fit(train, test)
+                accuracy, eer, eer_threshold, auc_score = classifier.evaluate(test)
                 accuracy_list.append(accuracy)
                 eer_list.append(eer)
                 auc_list.append(auc_score)
@@ -127,6 +129,7 @@ def process_combination(args):
             auc=avg_auc
         )
         results.append(result)
+
 
     return results
 
@@ -161,3 +164,97 @@ def run_experiments(preprocessor_feature_combinations: List[Tuple], n_folds: int
     plot_results(results_df)
 
     return results_df
+
+
+def plot_signals_two_samples(
+    example_samples, preprocessed_samples, extracted_samples,
+    output_dir, preprocessor_name, extractor_name
+):
+    """
+    Plot three signals side by side for two samples (vertically stacked) with a title and save the figure.
+
+    Parameters:
+        example_samples (list of array-like): List of original example signals (two samples expected).
+        preprocessed_samples (list of array-like): List of preprocessed signals (two samples expected).
+        extracted_samples (list of array-like): List of feature-extracted signals (two samples expected, can be 3D).
+        output_dir (str): Directory to save the plot.
+        preprocessor_name (str): Name of the preprocessor used.
+        extractor_name (str): Name of the feature extractor used.
+    """
+    # Ensure inputs are NumPy arrays
+    example_samples = [np.array(s) for s in example_samples]
+    preprocessed_samples = [np.array(s) for s in preprocessed_samples]
+    extracted_samples = [np.array(s) for s in extracted_samples]
+
+    # Ensure the output directory exists
+    os.makedirs(output_dir, exist_ok=True)
+
+    # Create a figure with six subplots (2 rows × 3 columns)
+    fig, axes = plt.subplots(2, 3, figsize=(15, 10))
+    fig.suptitle(f"{preprocessor_name} | {extractor_name}", fontsize=16)
+
+    for i in range(2):  # Loop through two samples
+        # Plot the original example sample
+        axes[i, 0].plot(example_samples[i][0], label='Example Sample')
+        axes[i, 0].set_title(f"Example Sample {i + 1}")
+
+        # Plot the preprocessed sample
+        axes[i, 1].plot(preprocessed_samples[i][0], label='Preprocessed Sample', color='orange')
+        axes[i, 1].set_title(f"Preprocessed Sample {i + 1}")
+
+        # Plot scatter plots for extracted features
+        if extracted_samples[i].ndim == 3:  # Handle 3D data
+            for j in range(extracted_samples[i].shape[1]):  # Iterate over the second dimension
+                axes[i, 2].scatter(
+                    np.arange(extracted_samples[i][0, j, :].shape[0]),  # X-axis: sample indices
+                    extracted_samples[i][0, j, :],  # Y-axis: feature values
+                    label=f"Feature {j + 1}", alpha=0.6
+                )
+        elif extracted_samples[i].ndim == 2:  # Handle 2D data
+            for j in range(extracted_samples[i].shape[0]):
+                axes[i, 2].scatter(
+                    np.arange(extracted_samples[i][j, :].shape[0]),  # X-axis: sample indices
+                    extracted_samples[i][j, :],  # Y-axis: feature values
+                    label=f"Feature {j + 1}", alpha=0.6
+                )
+        else:  # Handle 1D data
+            axes[i, 2].scatter(
+                np.arange(extracted_samples[i].shape[0]),  # X-axis: sample indices
+                extracted_samples[i],  # Y-axis: feature values
+                label="Extracted Features", color='green', alpha=0.6
+            )
+
+        axes[i, 2].set_title(f"Extracted Features {i + 1}")
+
+    # Adjust layout
+    plt.tight_layout(rect=[0, 0, 1, 0.95])  # Adjust for title
+
+    # Save the figure
+    filename = os.path.join(output_dir, f"comparison_{preprocessor_name}_{extractor_name}.png")
+    plt.savefig(filename)
+    plt.close(fig)  # Close the figure to free memory
+
+
+def process_combination_signal(preprocessor, feature_extractor):
+    preprocessor_name = type(preprocessor).__name__
+    feature_extractor_name = type(feature_extractor).__name__
+
+    example_sample_generator = GetEcgIDData('ecg-id-database-1.0.0', preprocessor, feature_extractor, raw=True).generator()
+    sample1 = [next(example_sample_generator)]
+    sample2 = [next(example_sample_generator)]
+
+    sample1_preprocessed = preprocessor(sample1)
+    sample2_preprocessed = preprocessor(sample2)
+
+    sample1_extracted = feature_extractor(sample1_preprocessed)
+    sample2_extracted = feature_extractor(sample2_preprocessed)
+
+    plot_signals_two_samples([sample1, sample2], [sample1_preprocessed, sample2_preprocessed], [sample1_extracted, sample2_extracted], "plots",  preprocessor_name, feature_extractor_name)
+
+
+def run_experiments_signals(preprocessor_feature_combinations: List[Tuple]):
+
+    for idx, (preprocessor, feature_extractor) in enumerate(
+        tqdm(preprocessor_feature_combinations, desc="Running experiments")
+    ):
+        process_combination_signal(preprocessor, feature_extractor)
